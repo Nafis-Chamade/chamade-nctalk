@@ -17,7 +17,7 @@ use OCP\Security\ISecureRandom;
 use Psr\Log\LoggerInterface;
 
 /**
- * HMAC-authenticated API for bridge service.
+ * HMAC-authenticated API for Chamade Python service.
  *
  * All methods verify HMAC before processing.
  * Endpoints: config, signaling ticket, room join/create/delete, bot CRUD.
@@ -80,7 +80,7 @@ class ConfigController extends Controller {
     }
 
     // ========================================================================
-    // Authorized rooms — used by bridge to sync after restart
+    // Authorized rooms — used by Chamade to sync after restart
     // ========================================================================
 
     /**

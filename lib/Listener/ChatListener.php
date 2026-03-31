@@ -16,7 +16,8 @@ use Psr\Log\LoggerInterface;
 /**
  * Listens for BotInvokeEvent and either:
  * 1. Handles /activate and /deactivate commands (room authorization)
- * 2. Forwards chat messages to the bridge webhook (if room is authorized)
+ * 1. Handles /activate and /deactivate commands (room authorization)
+ * 2. Forwards chat messages to the Chamade webhook (if room is authorized)
  */
 class ChatListener implements IEventListener {
 
@@ -80,7 +81,8 @@ class ChatListener implements IEventListener {
         }
         // 'allowed' or command → continue to forwarding
 
-        // Forward chat to bridge webhook
+
+        // Forward chat to Chamade webhook
         $backendUrl = $this->config->getAppValue(Application::APP_ID, 'backend_url', '');
         $apiSecret = $this->config->getAppValue(Application::APP_ID, 'api_secret', '');
 
@@ -126,7 +128,7 @@ class ChatListener implements IEventListener {
                 'timeout' => 120,
             ]);
 
-            // If bridge returned a message, reply via bot
+            // If Chamade returned a message, reply via bot
             $responseBody = json_decode($response->getBody(), true);
             if (is_array($responseBody) && !empty($responseBody['message'])) {
                 $event->addAnswer($responseBody['message']);

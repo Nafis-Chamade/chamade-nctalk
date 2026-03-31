@@ -269,12 +269,8 @@ class AuthorizeController extends Controller {
     }
 
     /**
-     * Get the callback URL.
-     *
-     * Priority: request param (from redirect query string) → admin config.
-     * The callback is a server-to-server POST (not a user redirect), so
-     * accepting it from the query string is safe — the user sees the
-     * authorize page and explicitly approves.
+     * Get the callback URL from admin config (set during pairing).
+     * This prevents open redirect — only admin-configured URLs are used.
      */
     private function getCallbackUrl(): string {
         $fromParam = $this->request->getParam('callback_url', '');
