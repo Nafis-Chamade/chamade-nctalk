@@ -1,0 +1,56 @@
+<?xml version="1.0"?>
+<info xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
+    <id>chamade_talk</id>
+    <name>Chamade — AI Agent for Talk</name>
+    <summary>Connect AI agents to Nextcloud Talk — chat and voice via Chamade</summary>
+    <description><![CDATA[
+**Chamade Talk** lets AI agents join your Nextcloud Talk conversations for chat and voice interactions.
+
+### How it works
+[Chamade](https://chamade.io) is a voice gateway for AI agents. This app connects your Nextcloud Talk instance to Chamade, so AI agents can:
+- Receive and reply to chat messages in Talk rooms
+- Join voice calls (requires Nextcloud High Performance Backend)
+- Be scoped to specific rooms via `/activate` and `/deactivate` commands
+
+### Features
+- **Owner-scoped bots**: each bot is tied to the Nextcloud user who authorized it
+- **Room authorization**: bots only respond in DMs from their owner or in rooms where `/activate` was used
+- **Text-only fallback**: works without HPB (chat only, no voice)
+- **HMAC-secured API**: all communication between Chamade and this app is authenticated
+
+### Setup
+1. Install this app on your Nextcloud instance
+2. In your Chamade dashboard, click "Connect Nextcloud Talk"
+3. Approve the authorization request on your Nextcloud instance
+4. Start chatting with your AI agent in Talk
+    ]]></description>
+    <version>2.0.0</version>
+    <licence>AGPL-3.0-or-later</licence>
+    <author mail="contact@skilpa.be" homepage="https://skilpa.be">Skilpa</author>
+    <namespace>ChamadeTalk</namespace>
+    <category>integration</category>
+    <category>multimedia</category>
+    <website>https://chamade.io</website>
+    <bugs>https://github.com/skilpa/chamade-nctalk/issues</bugs>
+    <repository type="git">https://github.com/skilpa/chamade-nctalk.git</repository>
+    <documentation>
+        <admin>https://chamade.io/docs</admin>
+    </documentation>
+    <dependencies>
+        <nextcloud min-version="28" max-version="33"/>
+        <php min-version="8.1"/>
+    </dependencies>
+    <settings>
+        <admin>OCA\ChamadeTalk\Settings\AdminSettings</admin>
+        <admin-section>talk</admin-section>
+    </settings>
+    <repair-steps>
+        <install>
+            <step>OCA\ChamadeTalk\Migration\InstallStep</step>
+        </install>
+        <uninstall>
+            <step>OCA\ChamadeTalk\Migration\UninstallStep</step>
+        </uninstall>
+    </repair-steps>
+</info>

@@ -1,0 +1,22 @@
+{
+    "translations": {
+        "Chamade — AI Agent": "Chamade — AI Agent",
+        "Configure the connection to the Chamade bridge service.": "Configure the connection to the Chamade bridge service.",
+        "Backend URL": "Backend URL",
+        "The URL of the bridge service.": "The URL of the bridge service.",
+        "API Key": "API Key",
+        "API key for the bridge service": "API key for the bridge service",
+        "API Secret (HMAC)": "API Secret (HMAC)",
+        "Auto-generated. Configure this in the bridge service.": "Auto-generated. Configure this in the bridge service.",
+        "Save": "Save",
+        "Saving…": "Saving…",
+        "Saved": "Saved",
+        "Error saving settings": "Error saving settings",
+        "Network error": "Network error",
+        "Bot registered (ID: %s)": "Bot registered (ID: %s)",
+        "Bot not registered. Re-enable the app to register.": "Bot not registered. Re-enable the app to register.",
+        "Authorize": "Authorize",
+        "wants to connect to your Nextcloud Talk.": "wants to connect to your Nextcloud Talk."
+    },
+    "plurals": {}
+}
