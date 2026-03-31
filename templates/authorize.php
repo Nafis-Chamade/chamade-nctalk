@@ -10,11 +10,11 @@ style('core', 'server');
 
     <p style="margin-bottom: 24px; text-align: center; color: var(--color-text-maxcontrast);">
         <strong><?php p($_['agent_name']); ?></strong>
-        <?php p($l->t('wants to connect to your Nextcloud Talk instance.')); ?>
+        <?php p($l->t('wants to connect to your Nextcloud Talk.')); ?>
     </p>
 
     <p style="margin-bottom: 24px; text-align: center; font-size: 0.9em; color: var(--color-text-maxcontrast);">
-        <?php p($l->t('A bot account will be created to allow the agent to join Talk conversations.')); ?>
+        <?php p($l->t('A bot account will be created to join Talk conversations.')); ?>
     </p>
 
     <form method="POST" action="<?php print_unescaped(\OC::$server->getURLGenerator()->linkToRoute(

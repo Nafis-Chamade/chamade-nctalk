@@ -24,7 +24,7 @@ class SettingsController extends Controller {
     }
 
     public function save(): JSONResponse {
-        $fields = ['backend_url', 'api_key'];
+        $fields = ['backend_url', 'api_key', 'callback_url'];
 
         foreach ($fields as $field) {
             $value = $this->request->getParam($field);

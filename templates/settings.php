@@ -52,6 +52,21 @@ script(\OCA\ChamadeTalk\AppInfo\Application::APP_ID, 'settings');
         </div>
 
         <div class="chamade-field">
+            <label for="chamade-callback-url">
+                <?php p($l->t('Callback URL')); ?>
+            </label>
+            <input type="url"
+                   id="chamade-callback-url"
+                   name="callback_url"
+                   value="<?php p($_['callback_url']); ?>"
+                   placeholder="https://chamade.io/api/nctalk/callback"
+            />
+            <em class="chamade-help">
+                <?php p($l->t('Optional. Set automatically when connecting from Chamade.')); ?>
+            </em>
+        </div>
+
+        <div class="chamade-field">
             <label><?php p($l->t('API Secret (HMAC)')); ?></label>
             <input type="text"
                    value="<?php p($_['api_secret']); ?>"

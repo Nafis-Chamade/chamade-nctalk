@@ -24,12 +24,14 @@ class AdminSettings implements ISettings {
         $backendUrl = $this->config->getAppValue(Application::APP_ID, 'backend_url', '');
         $apiSecret = $this->config->getAppValue(Application::APP_ID, 'api_secret', '');
         $apiKey = $this->config->getAppValue(Application::APP_ID, 'api_key', '');
+        $callbackUrl = $this->config->getAppValue(Application::APP_ID, 'callback_url', '');
 
         return new TemplateResponse(Application::APP_ID, 'settings', [
             'bot_id' => $botId,
             'backend_url' => $backendUrl,
             'api_secret' => $apiSecret,
             'api_key' => $apiKey,
+            'callback_url' => $callbackUrl,
             'has_bot' => !empty($botId),
         ]);
     }

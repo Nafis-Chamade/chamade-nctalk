@@ -16,7 +16,11 @@
         "Bot registered (ID: %s)": "Bot registered (ID: %s)",
         "Bot not registered. Re-enable the app to register.": "Bot not registered. Re-enable the app to register.",
         "Authorize": "Authorize",
-        "wants to connect to your Nextcloud Talk.": "wants to connect to your Nextcloud Talk."
+        "wants to connect to your Nextcloud Talk.": "wants to connect to your Nextcloud Talk.",
+        "A bot account will be created to join Talk conversations.": "A bot account will be created to join Talk conversations.",
+        "Authorize %s": "Authorize %s",
+        "Callback URL": "Callback URL",
+        "Optional. Set automatically when connecting from Chamade.": "Optional. Set automatically when connecting from Chamade."
     },
     "plurals": {}
 }
