@@ -1,10 +1,10 @@
-# Chamade — AI Agent for Nextcloud Talk
+# Chamade — Voice Gateway for Nextcloud Talk
 
-Connect AI agents to Nextcloud Talk for chat and voice interactions via [Chamade](https://chamade.io).
+[Chamade](https://chamade.io) is a voice gateway that connects AI agents to meetings and messaging platforms. This app bridges Nextcloud Talk to Chamade, so AI agents can interact with your Talk rooms via chat and voice.
 
 ## Features
 
-- **Chat & voice**: AI agents can read and reply to messages, and join voice calls (voice requires [High Performance Backend](https://nextcloud.com/talk/#scalability))
+- **Chat & voice**: agents can read and reply to messages, and join voice calls (voice requires [High Performance Backend](https://nextcloud.com/talk/#scalability))
 - **Owner-scoped bots**: each bot is tied to the Nextcloud user who authorized it
 - **Room authorization**: bots only respond in DMs from their owner, or in group rooms where `/activate` was used
 - **Text-only fallback**: works without HPB — chat only, no voice
