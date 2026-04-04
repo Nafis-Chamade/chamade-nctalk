@@ -1,6 +1,6 @@
-# Chamade — Voice Gateway for Nextcloud Talk
+# Chamade for Nextcloud Talk
 
-[Chamade](https://chamade.io) is a voice gateway that connects AI agents to meetings and messaging platforms. This app bridges Nextcloud Talk to Chamade, so AI agents can interact with your Talk rooms via chat and voice.
+[Chamade](https://chamade.io) is a gateway that connects AI agents to meetings and messaging platforms. This app bridges Nextcloud Talk to Chamade, so AI agents can interact with your Talk rooms via chat and voice.
 
 ## Features
 
