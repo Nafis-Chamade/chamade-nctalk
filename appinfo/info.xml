@@ -34,6 +34,7 @@
     <website>https://chamade.io</website>
     <bugs>https://codeberg.org/skilpa/chamade-nctalk/issues</bugs>
     <repository type="git">https://codeberg.org/skilpa/chamade-nctalk.git</repository>
+    <screenshot>https://codeberg.org/skilpa/chamade-nctalk/raw/branch/main/img/screenshot.png</screenshot>
     <documentation>
         <admin>https://chamade.io/docs/nctalk</admin>
     </documentation>

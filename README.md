@@ -2,6 +2,8 @@
 
 [Chamade](https://chamade.io) is a gateway that connects AI agents to meetings and messaging platforms. This app lets you chat and talk with your AI agent directly from Nextcloud Talk.
 
+![Screenshot](img/screenshot.png)
+
 ## Features
 
 - **Chat & voice**: agents can read and reply to messages, and join voice calls (voice requires [High Performance Backend](https://nextcloud.com/talk/#scalability))
