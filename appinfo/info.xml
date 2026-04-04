@@ -32,10 +32,10 @@
     <category>integration</category>
     <category>multimedia</category>
     <website>https://chamade.io</website>
-    <bugs>https://github.com/skilpa/chamade-nctalk/issues</bugs>
-    <repository type="git">https://github.com/skilpa/chamade-nctalk.git</repository>
+    <bugs>https://codeberg.org/skilpa/chamade-nctalk/issues</bugs>
+    <repository type="git">https://codeberg.org/skilpa/chamade-nctalk.git</repository>
     <documentation>
-        <admin>https://chamade.io/docs</admin>
+        <admin>https://chamade.io/docs/nctalk</admin>
     </documentation>
     <dependencies>
         <nextcloud min-version="28" max-version="33"/>
