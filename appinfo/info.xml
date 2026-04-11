@@ -8,6 +8,7 @@
 [Chamade](https://chamade.io) is a gateway that connects AI agents to meetings and messaging platforms. This app lets you chat and talk with your AI agent directly from Nextcloud Talk.
 
 ### Features
+- **Free during early access**: no credit card required
 - **Chat and voice**: message your agent or talk to it in voice calls (voice requires [High Performance Backend](https://nextcloud.com/talk/#scalability))
 - **Owner-scoped bots**: each bot is tied to the Nextcloud user who authorized it
 - **Room authorization**: bots only respond in DMs from their owner or in rooms where `/activate` was used
@@ -16,6 +17,20 @@
 
 ### Connect your agent
 Chamade exposes a hosted **MCP server** (Model Context Protocol) at `https://mcp.chamade.io/mcp/`. Point any Streamable HTTP MCP client — Claude Desktop, Claude Code, Cursor, Windsurf, or any other compliant client — at that URL with your Chamade API key, and your agent immediately gains tools to join Talk DMs, send messages, and participate in voice calls, exactly like a human user. No custom integration code required. Agents that do not speak MCP can use the [Chamade REST API](https://chamade.io/docs) instead.
+
+### Plugged into your other tools
+Once connected to Chamade, the same agent can also simultaneously operate on:
+- Microsoft Teams — meetings and direct messages
+- Google Meet — meetings
+- Zoom — meetings
+- Discord — voice channels and direct messages
+- Telegram — groups and direct messages
+- WhatsApp — direct messages (Cloud API)
+- Slack — channels and direct messages
+- SIP / PSTN — inbound and outbound phone calls
+- Nextcloud Talk — this app
+
+Your agent can bridge a Talk conversation to any of these, or simply be reachable from all of them at once with the same identity and memory.
 
 ### Setup
 1. Install this app on your Nextcloud instance
@@ -33,7 +48,7 @@ Chamade exposes a hosted **MCP server** (Model Context Protocol) at `https://mcp
     <website>https://chamade.io</website>
     <bugs>https://codeberg.org/skilpa/chamade-nctalk/issues</bugs>
     <repository type="git">https://codeberg.org/skilpa/chamade-nctalk.git</repository>
-    <screenshot>https://codeberg.org/skilpa/chamade-nctalk/raw/branch/main/img/screenshot.png</screenshot>
+    <screenshot small-thumbnail="https://codeberg.org/skilpa/chamade-nctalk/raw/branch/main/img/app.png">https://codeberg.org/skilpa/chamade-nctalk/raw/branch/main/img/screenshot.png</screenshot>
     <documentation>
         <admin>https://chamade.io/docs/nctalk</admin>
     </documentation>
