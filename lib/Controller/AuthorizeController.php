@@ -55,8 +55,14 @@ class AuthorizeController extends Controller {
     /**
      * Show the authorization approval page.
      *
-     * Query params: state, agent_name
+     * Query params: state, agent_name, backend_url (optional)
      * (callback_url comes from admin config, not user input)
+     *
+     * If `backend_url` is provided and the admin has not already
+     * configured one, persist it now so the ChatListener can forward
+     * chat messages without requiring a separate manual admin step.
+     * Once a backend_url exists in appconfig, it is NOT overridden —
+     * admins keep full control to change it later.
      *
      * @NoAdminRequired
      * @NoCSRFRequired
@@ -64,10 +70,44 @@ class AuthorizeController extends Controller {
     public function show(): TemplateResponse|JSONResponse {
         $state = $this->request->getParam('state', '');
         $agentName = $this->request->getParam('agent_name', 'AI Agent');
+        $backendUrl = $this->request->getParam('backend_url', '');
+        $requestCallbackUrl = $this->request->getParam('callback_url', '');
 
         $callbackUrl = $this->getCallbackUrl();
+
+        // Auto-bootstrap callback_url from the connect request if the
+        // addon has never been paired (fresh install) OR if a previous
+        // uninstall step wiped it. We require the incoming callback_url
+        // and backend_url to share the same host — both must come from
+        // the same partner deployment, so a crafted authorize link with
+        // a spoofed callback_url (pointing at an attacker) cannot also
+        // spoof backend_url in a matching way without controlling both.
+        if (empty($callbackUrl) && !empty($requestCallbackUrl) && !empty($backendUrl)) {
+            if ($this->isSafeBootstrapPair($requestCallbackUrl, $backendUrl)) {
+                $this->config->setAppValue(Application::APP_ID, 'callback_url', $requestCallbackUrl);
+                $callbackUrl = $requestCallbackUrl;
+                $this->logger->info("Auto-set callback_url from connect flow", [
+                    'app' => Application::APP_ID,
+                ]);
+            }
+        }
+
         if (empty($callbackUrl)) {
             return new JSONResponse(['error' => 'No callback URL configured — admin must pair first'], 400);
+        }
+
+        // Auto-bootstrap backend_url from the connect request the first
+        // time through. We only accept https:// targets on the same host
+        // as callback_url to avoid letting an attacker redirect chat to
+        // a third-party URL via a crafted authorize link.
+        if (!empty($backendUrl)) {
+            $existing = $this->config->getAppValue(Application::APP_ID, 'backend_url', '');
+            if (empty($existing) && $this->isSafeBackendUrl($backendUrl, $callbackUrl)) {
+                $this->config->setAppValue(Application::APP_ID, 'backend_url', $backendUrl);
+                $this->logger->info("Auto-set backend_url from connect flow", [
+                    'app' => Application::APP_ID,
+                ]);
+            }
         }
 
         $brandName = $this->config->getAppValue(Application::APP_ID, 'brand_name', 'Chamade');
@@ -78,6 +118,59 @@ class AuthorizeController extends Controller {
             'agent_name' => $agentName,
             'brand_name' => $brandName,
         ]);
+    }
+
+    /**
+     * Only accept a backend_url whose scheme is https and whose host
+     * matches the admin-configured callback_url. Anything else is
+     * ignored — the admin can still set it manually in settings.
+     */
+    private function isSafeBackendUrl(string $backendUrl, string $callbackUrl): bool {
+        $b = parse_url($backendUrl);
+        $c = parse_url($callbackUrl);
+        if (!is_array($b) || !is_array($c)) {
+            return false;
+        }
+        $bScheme = $b['scheme'] ?? '';
+        $bHost = $b['host'] ?? '';
+        $cHost = $c['host'] ?? '';
+        // Allow http only for localhost/dev flows where callback_url is
+        // also http (e.g. test environments hitting 127.0.0.1).
+        $cScheme = $c['scheme'] ?? '';
+        if ($bScheme !== 'https' && !($bScheme === 'http' && $cScheme === 'http')) {
+            return false;
+        }
+        return $bHost !== '' && strcasecmp($bHost, $cHost) === 0;
+    }
+
+    /**
+     * Only auto-bootstrap callback_url when we also have a backend_url
+     * from the same source. Both URLs must share the same scheme + host,
+     * and the scheme must be https (or http in dev flows where both
+     * sides also speak http). Prevents a crafted authorize link from
+     * pointing callback_url at an attacker while leaving backend_url
+     * looking legitimate: whoever forges one has to forge the other.
+     */
+    private function isSafeBootstrapPair(string $callbackUrl, string $backendUrl): bool {
+        $c = parse_url($callbackUrl);
+        $b = parse_url($backendUrl);
+        if (!is_array($c) || !is_array($b)) {
+            return false;
+        }
+        $cScheme = $c['scheme'] ?? '';
+        $bScheme = $b['scheme'] ?? '';
+        if ($cScheme !== $bScheme) {
+            return false;
+        }
+        if ($cScheme !== 'https' && $cScheme !== 'http') {
+            return false;
+        }
+        $cHost = $c['host'] ?? '';
+        $bHost = $b['host'] ?? '';
+        if ($cHost === '' || $bHost === '') {
+            return false;
+        }
+        return strcasecmp($cHost, $bHost) === 0;
     }
 
     // ========================================================================
@@ -206,6 +299,19 @@ class AuthorizeController extends Controller {
             $botOwners[$botUsername] = $ownerNcUsername;
             $this->config->setAppValue(Application::APP_ID, 'bot_owners', json_encode($botOwners));
         }
+
+        // Persist the bot user password so local code paths that need
+        // moderator OCS credentials (ChatListener::lookupRoomType for the
+        // owner-DM auto-authorize check, and any future helper) can look
+        // it up. Without this entry, ChatListener silently drops every
+        // message from the owner because it cannot determine that the
+        // DM is a ONE_TO_ONE room.
+        $botPasswords = json_decode(
+            $this->config->getAppValue(Application::APP_ID, 'bot_passwords', '{}'),
+            true
+        ) ?: [];
+        $botPasswords[$botUsername] = $botPassword;
+        $this->config->setAppValue(Application::APP_ID, 'bot_passwords', json_encode($botPasswords));
 
         // Create visibility group: bot + owner in same group (hides bot from other users)
         if (!empty($ownerNcUsername)) {

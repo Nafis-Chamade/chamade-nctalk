@@ -5,22 +5,28 @@ declare(strict_types=1);
 namespace OCA\ChamadeTalk\Controller;
 
 use OCA\ChamadeTalk\AppInfo\Application;
-use OCA\ChamadeTalk\Service\BotService;
 use OCA\ChamadeTalk\Service\TalkApiService;
 use OCA\ChamadeTalk\Traits\HmacVerification;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IConfig;
 use OCP\IRequest;
-use OCP\IUserManager;
 use OCP\Security\ISecureRandom;
 use Psr\Log\LoggerInterface;
 
 /**
- * HMAC-authenticated API for Chamade Python service.
+ * HMAC-authenticated API for the Chamade Python service.
  *
- * All methods verify HMAC before processing.
- * Endpoints: config, signaling ticket, room join/create/delete, bot CRUD.
+ * Scope after 2.2.0 cleanup: only the endpoints that are actually hit
+ * by the Chamade NextcloudTalkConnector or Chamade's nctalk api.
+ *
+ * - getConfig                — HPB URL + ICE servers for the connector
+ * - getAuthorizedRooms / setAuthorizedRooms — room auth sync on reboot
+ * - getSignalingTicket       — V1 HPB signaling ticket for a user/room
+ * - joinRoom                 — add a user to a room via OCS
+ *
+ * Dead createRoom/deleteRoom/getRoomInfo/createBot/deleteBot/enableBotInRoom
+ * endpoints were removed in 2.2.0 — nothing on the Python side called them.
  */
 class ConfigController extends Controller {
 
@@ -30,9 +36,7 @@ class ConfigController extends Controller {
         string $appName,
         IRequest $request,
         private IConfig $config,
-        private IUserManager $userManager,
         private ISecureRandom $random,
-        private BotService $botService,
         private TalkApiService $talkApi,
         private LoggerInterface $logger,
     ) {
@@ -167,7 +171,8 @@ class ConfigController extends Controller {
             $hpbUrl = $signalingServers['servers'][0]['server'] ?? '';
         }
 
-        // Bot secret
+        // Bot secret — used by the connector for the /ocs/v2.php/apps/spreed
+        // /api/v1/bot/{token}/message HMAC path when posting from the bridge.
         $botSecret = $this->config->getAppValue(Application::APP_ID, 'default_bot_secret', '');
 
         // ICE servers
@@ -191,7 +196,7 @@ class ConfigController extends Controller {
     }
 
     // ========================================================================
-    // Room Management — via OCS REST (TalkApiService)
+    // Room participation — join room as bot user
     // ========================================================================
 
     /**
@@ -208,7 +213,7 @@ class ConfigController extends Controller {
             return new JSONResponse(['error' => 'username parameter required'], 400);
         }
 
-        $password = $this->getUserPassword($username);
+        $password = $this->getBotUserPassword($username);
         if ($password === null) {
             return new JSONResponse(['error' => "User '{$username}' not found"], 404);
         }
@@ -218,168 +223,19 @@ class ConfigController extends Controller {
         return new JSONResponse(['status' => 'ok', 'sessionId' => '']);
     }
 
-    /**
-     * @PublicPage
-     * @NoCSRFRequired
-     */
-    public function getRoomInfo(string $token): JSONResponse {
-        if (!$this->verifyHmac()) {
-            return new JSONResponse(['error' => 'Invalid HMAC'], 403);
-        }
-
-        [$adminUser, $adminPass] = $this->getServiceCredentials();
-        if ($adminUser === null) {
-            return new JSONResponse(['error' => 'No service user configured'], 500);
-        }
-
-        $info = $this->talkApi->getRoomInfo($token, $adminUser, $adminPass);
-        if ($info === null) {
-            return new JSONResponse(['error' => 'Room not found'], 404);
-        }
-
-        return new JSONResponse($info);
-    }
-
-    /**
-     * @PublicPage
-     * @NoCSRFRequired
-     */
-    public function createRoom(): JSONResponse {
-        if (!$this->verifyHmac()) {
-            return new JSONResponse(['error' => 'Invalid HMAC'], 403);
-        }
-
-        $name = $this->request->getParam('name', 'Bridge Room');
-        $username = $this->request->getParam('username', '');
-        if (empty($username)) {
-            return new JSONResponse(['error' => 'username parameter required'], 400);
-        }
-
-        $password = $this->getUserPassword($username);
-        if ($password === null) {
-            return new JSONResponse(['error' => "User '{$username}' not found"], 404);
-        }
-
-        $room = $this->talkApi->createGroupRoom($name, $username, $password);
-        if ($room === null) {
-            return new JSONResponse(['error' => 'Failed to create room'], 500);
-        }
-
-        // Enable default bot
-        $botId = (int) $this->config->getAppValue(Application::APP_ID, 'default_bot_id', '0');
-        if ($botId > 0) {
-            $this->botService->enableBotInRoom($botId, $room['token']);
-        }
-
-        return new JSONResponse($room);
-    }
-
-    /**
-     * @PublicPage
-     * @NoCSRFRequired
-     */
-    public function deleteRoom(string $token): JSONResponse {
-        if (!$this->verifyHmac()) {
-            return new JSONResponse(['error' => 'Invalid HMAC'], 403);
-        }
-
-        [$adminUser, $adminPass] = $this->getServiceCredentials();
-        if ($adminUser === null) {
-            return new JSONResponse(['error' => 'No service user configured'], 500);
-        }
-
-        $ok = $this->talkApi->deleteRoom($token, $adminUser, $adminPass);
-        if (!$ok) {
-            return new JSONResponse(['error' => 'Room not found'], 404);
-        }
-
-        return new JSONResponse(['status' => 'ok']);
-    }
-
-    // ========================================================================
-    // Bot Management
-    // ========================================================================
-
-    /**
-     * @PublicPage
-     * @NoCSRFRequired
-     */
-    public function createBot(): JSONResponse {
-        if (!$this->verifyHmac()) {
-            return new JSONResponse(['error' => 'Invalid HMAC'], 403);
-        }
-
-        $name = $this->request->getParam('name', 'Bridge Bot');
-        $secret = bin2hex(random_bytes(32));
-
-        $this->botService->installBot($name, $secret);
-
-        return new JSONResponse(['status' => 'ok', 'secret' => $secret]);
-    }
-
-    /**
-     * @PublicPage
-     * @NoCSRFRequired
-     */
-    public function deleteBot(int $botId): JSONResponse {
-        if (!$this->verifyHmac()) {
-            return new JSONResponse(['error' => 'Invalid HMAC'], 403);
-        }
-
-        $this->botService->uninstallBot($botId);
-        return new JSONResponse(['status' => 'ok']);
-    }
-
-    /**
-     * @PublicPage
-     * @NoCSRFRequired
-     */
-    public function enableBotInRoom(int $botId, string $token): JSONResponse {
-        if (!$this->verifyHmac()) {
-            return new JSONResponse(['error' => 'Invalid HMAC'], 403);
-        }
-
-        $this->botService->enableBotInRoom($botId, $token);
-        return new JSONResponse(['status' => 'ok']);
-    }
-
     // ========================================================================
     // Helpers
     // ========================================================================
 
     /**
-     * Get a temporary password for a bot user (reset + return).
-     * For service user, use the stored password.
+     * Lookup a bot user's stored password (written by AuthorizeController
+     * when the user authorizes the addon).
      */
-    private function getUserPassword(string $username): ?string {
-        $user = $this->userManager->get($username);
-        if ($user === null) {
-            return null;
-        }
-
-        // If this is the service user, use stored password
-        $serviceUser = $this->config->getAppValue(Application::APP_ID, 'service_user', '');
-        if ($username === $serviceUser) {
-            return $this->config->getAppValue(Application::APP_ID, 'service_user_password', '');
-        }
-
-        // For bot users, use their stored app password
+    private function getBotUserPassword(string $username): ?string {
         $storedPasswords = json_decode(
             $this->config->getAppValue(Application::APP_ID, 'bot_passwords', '{}'),
             true
         ) ?: [];
         return $storedPasswords[$username] ?? null;
-    }
-
-    /**
-     * @return array{0: ?string, 1: ?string} [username, password]
-     */
-    private function getServiceCredentials(): array {
-        $user = $this->config->getAppValue(Application::APP_ID, 'service_user', '');
-        $pass = $this->config->getAppValue(Application::APP_ID, 'service_user_password', '');
-        if (empty($user) || empty($pass)) {
-            return [null, null];
-        }
-        return [$user, $pass];
     }
 }

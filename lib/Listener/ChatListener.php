@@ -90,14 +90,29 @@ class ChatListener implements IEventListener {
             return;
         }
 
-        // Get room type for is_dm detection via OCS REST
-        $roomType = 0;
-        $serviceUser = $this->config->getAppValue(Application::APP_ID, 'service_user', '');
-        $servicePass = $this->config->getAppValue(Application::APP_ID, 'service_user_password', '');
-        if (!empty($serviceUser) && !empty($servicePass)) {
-            $info = $this->talkApi->getRoomInfo($roomToken, $serviceUser, $servicePass);
-            if ($info !== null) {
-                $roomType = $info['type'];
+        // Get room type for is_dm detection via OCS REST. Uses a bot user's
+        // credentials (any bot user is a participant/moderator of every room
+        // we care about — DMs, /activate'd groups), so we don't need the
+        // legacy `service_user` path which was never populated in the first
+        // place.
+        $roomType = $this->lookupRoomType($roomToken);
+
+        // Identify which bot this message is for by matching the sender against
+        // bot_owners (populated by AuthorizeController::createBotAndCallback).
+        // For 1:1 DMs this is unambiguous; for group rooms the first bot owned
+        // by the sender wins (acceptable for single-user scenarios).
+        $botOwners = json_decode(
+            $this->config->getAppValue(Application::APP_ID, 'bot_owners', '{}'),
+            true
+        ) ?: [];
+        $bareSender = $this->bareUsername($actorId);
+        $botUser = '';
+        $botOwner = '';
+        foreach ($botOwners as $botUsername => $ownerUsername) {
+            if ($ownerUsername === $bareSender) {
+                $botUser = (string) $botUsername;
+                $botOwner = (string) $ownerUsername;
+                break;
             }
         }
 
@@ -109,6 +124,8 @@ class ChatListener implements IEventListener {
             'sender_id' => $actorId,
             'message' => $message,
             'room_type' => $roomType,
+            'bot_user' => $botUser,
+            'bot_owner' => $botOwner,
         ]);
 
         // HMAC auth
@@ -186,20 +203,46 @@ class ChatListener implements IEventListener {
             return 'allowed';
         }
 
-        // DM from owner → auto-authorized (room type 1 = ONE_TO_ONE)
+        // DM from owner → auto-authorized (room type 1 = ONE_TO_ONE).
+        // We query the room type using the bot user's credentials (the
+        // bot user is a moderator of the DM, so it can call OCS REST),
+        // which replaces the legacy `service_user` path that was never
+        // populated in the addon appconfig.
         if ($isOwner) {
-            $serviceUser = $this->config->getAppValue(Application::APP_ID, 'service_user', '');
-            $servicePass = $this->config->getAppValue(Application::APP_ID, 'service_user_password', '');
-            if (!empty($serviceUser) && !empty($servicePass)) {
-                $info = $this->talkApi->getRoomInfo($roomToken, $serviceUser, $servicePass);
-                if ($info !== null && $info['type'] === 1) {
-                    return 'allowed';
-                }
+            $roomType = $this->lookupRoomType($roomToken);
+            if ($roomType === 1) {
+                return 'allowed';
             }
         }
 
         // Not authorized
         return 'denied';
+    }
+
+    /**
+     * Query the Talk room type via OCS REST using any available bot user's
+     * credentials. Returns 0 if we cannot determine the type (no bot user
+     * stored, no room access). Caller can still treat 0 as "unknown" and
+     * proceed without DM-specific behavior.
+     */
+    private function lookupRoomType(string $roomToken): int {
+        $botPasswords = json_decode(
+            $this->config->getAppValue(Application::APP_ID, 'bot_passwords', '{}'),
+            true
+        ) ?: [];
+        if (!is_array($botPasswords) || empty($botPasswords)) {
+            return 0;
+        }
+        foreach ($botPasswords as $username => $password) {
+            if (!is_string($username) || !is_string($password) || $password === '') {
+                continue;
+            }
+            $info = $this->talkApi->getRoomInfo($roomToken, $username, $password);
+            if ($info !== null) {
+                return (int) ($info['type'] ?? 0);
+            }
+        }
+        return 0;
     }
 
     /**

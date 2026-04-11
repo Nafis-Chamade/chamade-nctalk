@@ -72,7 +72,26 @@ class InstallStep implements IRepairStep {
             $this->config->setAppValue(Application::APP_ID, 'default_bot_secret', $secret);
             $output->info("Registered default bot: {$brandName}");
         } catch (\Throwable $e) {
-            $output->warning("Bot registration failed: " . $e->getMessage());
+            // Most common cause: a legacy orphan row in oc_talk_bots_server
+            // from a pre-2.2.0 install that never persisted default_bot_secret,
+            // so the uninstall step (then OR now) couldn't dispatch a matching
+            // BotUninstallEvent and the row survived. Spreed's BotListener now
+            // refuses the new install with "Bot with the same URL and a
+            // different secret is already registered".
+            //
+            // Recovery (one-time admin action — we can't do it from here
+            // without touching private spreed APIs):
+            //     occ talk:bot:uninstall --url=nextcloudapp://{app_id}
+            // then re-run `occ app:enable {app_id}` to re-register cleanly.
+            $msg = $e->getMessage();
+            $output->warning("Bot registration failed: {$msg}");
+            if (stripos($msg, 'same URL') !== false || stripos($msg, 'different secret') !== false) {
+                $hint = "Legacy bot orphan detected. Run: occ talk:bot:uninstall --url=nextcloudapp://"
+                    . Application::APP_ID
+                    . " then re-enable the app.";
+                $output->warning($hint);
+                $this->logger->error($hint, ['app' => Application::APP_ID]);
+            }
         }
     }
 }

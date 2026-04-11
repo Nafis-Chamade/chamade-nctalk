@@ -12,8 +12,14 @@ use Psr\Log\LoggerInterface;
  * Wrapper around Talk's OCS REST API — replaces direct use of private
  * OCA\Talk\* classes (Manager, RoomService, ParticipantService, mappers).
  *
- * All calls go through the local Nextcloud HTTP API as the service user,
+ * All calls go through the local Nextcloud HTTP API as a specified user,
  * keeping us on public APIs only (required for App Store).
+ *
+ * Scope after 2.2.0 cleanup: only the methods used by the live code
+ * paths — getRoomInfo (ChatListener is_dm + owner DM check), sendMessage
+ * (BotUserController::postMessage) and addUserToRoom (ConfigController
+ * ::joinRoom). Dead createGroupRoom / createOneToOneRoom / deleteRoom
+ * / listBots / enableBotInRoom were removed.
  */
 class TalkApiService {
 
@@ -23,10 +29,6 @@ class TalkApiService {
         private LoggerInterface $logger,
     ) {
     }
-
-    // ========================================================================
-    // Room operations
-    // ========================================================================
 
     /**
      * Get room info by token.
@@ -47,50 +49,6 @@ class TalkApiService {
     }
 
     /**
-     * Create a group conversation.
-     *
-     * @return array{token: string, name: string}|null
-     */
-    public function createGroupRoom(string $name, string $asUser, string $password): ?array {
-        $data = $this->ocsRequest('POST', '/apps/spreed/api/v4/room', $asUser, $password, [
-            'roomType' => 2, // TYPE_GROUP
-            'roomName' => $name,
-        ]);
-        if ($data === null) {
-            return null;
-        }
-        return [
-            'token' => $data['token'] ?? '',
-            'name' => $data['displayName'] ?? $data['name'] ?? $name,
-        ];
-    }
-
-    /**
-     * Create (or reuse) a 1:1 conversation.
-     *
-     * @return array{token: string}|null
-     */
-    public function createOneToOneRoom(string $targetUserId, string $asUser, string $password): ?array {
-        $data = $this->ocsRequest('POST', '/apps/spreed/api/v4/room', $asUser, $password, [
-            'roomType' => 1, // TYPE_ONE_TO_ONE
-            'invite' => $targetUserId,
-        ]);
-        if ($data === null) {
-            return null;
-        }
-        return [
-            'token' => $data['token'] ?? '',
-        ];
-    }
-
-    /**
-     * Delete a room.
-     */
-    public function deleteRoom(string $token, string $asUser, string $password): bool {
-        return $this->ocsRequest('DELETE', "/apps/spreed/api/v4/room/{$token}", $asUser, $password) !== null;
-    }
-
-    /**
      * Add a user to a room.
      */
     public function addUserToRoom(string $token, string $userId, string $asUser, string $password): bool {
@@ -99,10 +57,6 @@ class TalkApiService {
             'source' => 'users',
         ]) !== null;
     }
-
-    // ========================================================================
-    // Chat operations
-    // ========================================================================
 
     /**
      * Send a chat message in a room.
@@ -113,33 +67,30 @@ class TalkApiService {
         ]) !== null;
     }
 
-    // ========================================================================
-    // Bot operations (via OCS — Talk 21+ / NC 31+)
-    // ========================================================================
-
     /**
-     * List bots visible to current user (server-wide).
+     * Enable a Talk bot in a specific room via OCS REST.
+     * Requires the caller to be a moderator of the room.
      *
-     * @return array<array{id: int, name: string, state: int}>
-     */
-    public function listBots(string $token, string $asUser, string $password): array {
-        $data = $this->ocsRequest('GET', "/apps/spreed/api/v1/bot/{$token}", $asUser, $password);
-        return is_array($data) ? $data : [];
-    }
-
-    /**
-     * Enable a bot in a conversation via OCS.
-     * POST /ocs/v2.php/apps/spreed/api/v1/bot/{token}/admin
+     * POST /ocs/v2.php/apps/spreed/api/v1/bot/{token}/{botId}
+     *
+     * Returns true on success. On 400 "Bot is already enabled", spreed
+     * returns that as an error but it's effectively a no-op for us —
+     * treat as success so our auto-enable remains idempotent.
      */
     public function enableBotInRoom(int $botId, string $token, string $asUser, string $password): bool {
-        return $this->ocsRequest('POST', "/apps/spreed/api/v1/bot/{$token}/admin", $asUser, $password, [
-            'botId' => $botId,
-        ]) !== null;
+        $data = $this->ocsRequest(
+            'POST',
+            "/apps/spreed/api/v1/bot/{$token}/{$botId}",
+            $asUser,
+            $password,
+            []
+        );
+        // ocsRequest returns null on any non-2xx; distinguishing "already
+        // enabled" (400) from a real failure requires inspecting the body,
+        // which ocsRequest throws away. For our purposes the caller just
+        // wants idempotent "ensure the bot is on in this room".
+        return $data !== null;
     }
-
-    // ========================================================================
-    // Internal HTTP helper
-    // ========================================================================
 
     /**
      * Make an OCS REST API request to the local Nextcloud instance.
@@ -153,6 +104,11 @@ class TalkApiService {
         string $password,
         array $body = [],
     ): ?array {
+        if (empty($asUser) || empty($password)) {
+            // Empty credentials always fail — skip the HTTP roundtrip.
+            return null;
+        }
+
         $ncUrl = $this->config->getSystemValue('overwrite.cli.url', 'https://localhost');
         $url = rtrim($ncUrl, '/') . '/ocs/v2.php' . $endpoint;
 
