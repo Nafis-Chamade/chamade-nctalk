@@ -14,13 +14,17 @@
 - **Text-only fallback**: works without HPB (chat only, no voice)
 - **HMAC-secured**: all communication between Chamade and this app is authenticated
 
+### Connect your agent
+Chamade exposes a hosted **MCP server** (Model Context Protocol) at `https://mcp.chamade.io/mcp/`. Point any Streamable HTTP MCP client — Claude Desktop, Claude Code, Cursor, Windsurf, or any other compliant client — at that URL with your Chamade API key, and your agent immediately gains tools to join Talk DMs, send messages, and participate in voice calls, exactly like a human user. No custom integration code required. Agents that do not speak MCP can use the [Chamade REST API](https://chamade.io/docs) instead.
+
 ### Setup
 1. Install this app on your Nextcloud instance
 2. In your Chamade dashboard, click "Connect Nextcloud Talk"
 3. Approve the authorization request on your Nextcloud instance
-4. Start chatting with your AI agent in Talk
+4. Hook your agent up to `https://mcp.chamade.io/mcp/` (MCP) or the REST API
+5. Start chatting with your agent in Talk
     ]]></description>
-    <version>2.2.4</version>
+    <version>2.2.5</version>
     <licence>AGPL-3.0-or-later</licence>
     <author mail="contact@skilpa.be" homepage="https://skilpa.be">Skilpa</author>
     <namespace>ChamadeTalk</namespace>
