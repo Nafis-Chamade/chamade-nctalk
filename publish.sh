@@ -67,7 +67,12 @@ REBRAND_FILES=(
 #   templates/settings.php   — no pairing UI, has callback_url
 #   js/settings.js           — no pairing JS
 #   l10n/*.json              — Chamade-specific strings
-#   appinfo/info.xml         — Chamade description/URLs
+#   appinfo/info.xml         — Chamade description/URLs (marketing copy, MCP
+#                              pitch, platforms list, early-access mention).
+#                              Only <version> is synced from maquisard below.
+#                              When the addon identity evolves (name, summary,
+#                              categories, major feature add), align BY HAND
+#                              between this repo and maquisard's info.xml.
 #   appinfo/routes.php       — no pairing/bridge routes
 #   lib/AppInfo/Application.php — no UserCreatedListener
 #   lib/Settings/AdminSettings.php — has callback_url

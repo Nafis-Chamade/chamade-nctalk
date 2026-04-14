@@ -1,28 +1,51 @@
-# Chamade for Nextcloud Talk
+# Chamade AI Bridge for Talk
 
-[Chamade](https://chamade.io) is a gateway that connects AI agents to meetings and messaging platforms. This app lets you chat and talk with your AI agent directly from Nextcloud Talk.
+[Chamade](https://chamade.io) is a voice and chat gateway that gives AI agents a single API across every major meeting platform. This addon bridges Nextcloud Talk into that gateway — your agent joins your Talk rooms as a regular bot, reads and replies in chat, and on calls listens and speaks through Talk's High-Performance Backend.
 
 ![Screenshot](img/screenshot.png)
 
+## One integration, every platform
+
+Once your agent is connected to Chamade, the same agent simultaneously reaches:
+
+- Microsoft Teams — meetings and direct messages
+- Google Meet — meetings
+- Zoom — meetings
+- Discord — voice channels and direct messages
+- Telegram — groups and direct messages
+- WhatsApp — direct messages (Cloud API)
+- Slack — channels and direct messages
+- SIP / PSTN — inbound and outbound phone calls
+- Nextcloud Talk — via this addon
+
+Your agent can be reachable from all of them at once with a single identity and memory, or bridge a Talk conversation into any of the others.
+
 ## Features
 
-- **Chat & voice**: agents can read and reply to messages, and join voice calls (voice requires [High Performance Backend](https://nextcloud.com/talk/#scalability))
-- **Owner-scoped bots**: each bot is tied to the Nextcloud user who authorized it
-- **Room authorization**: bots only respond in DMs from their owner, or in group rooms where `/activate` was used
-- **Text-only fallback**: works without HPB — chat only, no voice
-- **HMAC-secured**: all communication between Chamade and this app is authenticated
+- **Free during early access** — no credit card required
+- **Chat and voice** — on calls with [High-Performance Backend](https://nextcloud.com/talk/#scalability), the gateway transcribes audio and speaks the agent's replies. Graceful text-only fallback on vanilla Nextcloud.
+- **Built-in STT + TTS** — speech recognition and synthesis run server-side on the gateway, using your own ElevenLabs or Deepgram API key configured in the Chamade dashboard. No per-minute charge on the addon side.
+- **Owner-scoped bots** — each bot is tied to the Nextcloud user who authorized it. 1:1 DMs with the owner are auto-authorized; group rooms require `/activate`.
+- **Automatic event fallback** — if your Nextcloud doesn't dispatch `BotInvokeEvent` (observed on some managed hosts), the gateway transparently falls back to OCS chat polling, with no behavior change for the agent.
+- **HMAC-secured** — all communication between Chamade and this addon is authenticated.
+
+## Connect your agent
+
+Chamade exposes a hosted **MCP server** (Model Context Protocol) at `https://mcp.chamade.io/mcp/`. Point any Streamable HTTP MCP client — Claude Desktop, Claude Code, Cursor, Windsurf, or any other compliant client — at that URL with your Chamade API key, and your agent immediately gains tools to join Talk DMs, send messages, and participate in voice calls, exactly like a human user. No custom integration code required.
+
+Agents that do not speak MCP can use the [Chamade REST API](https://chamade.io/docs) instead.
 
 ## Requirements
 
 - Nextcloud 28 or later
 - PHP 8.1 or later
-- A [Chamade](https://chamade.io) account
+- A [Chamade](https://chamade.io) account (free during early access)
 
 ## Installation
 
 ### From the Nextcloud App Store
 
-Search for **Chamade** in your Nextcloud app store and install it.
+Search for **Chamade AI Bridge for Talk** in your Nextcloud app store and install it.
 
 ### Manual
 
@@ -32,11 +55,11 @@ Search for **Chamade** in your Nextcloud app store and install it.
 
 ## Setup
 
-1. Install this app on your Nextcloud instance
-2. Go to **Administration Settings > Talk** and configure the Chamade backend URL and API key
-3. In your [Chamade dashboard](https://chamade.io/dashboard), click **Connect Nextcloud Talk**
-4. Approve the authorization request on your Nextcloud instance
-5. Start chatting with your AI agent in Talk
+1. Install this addon on your Nextcloud instance.
+2. In your [Chamade dashboard](https://chamade.io/dashboard), click **Connect Nextcloud Talk**.
+3. Approve the authorization request on your Nextcloud instance — a personal bot is created in your account.
+4. Hook your agent up to `https://mcp.chamade.io/mcp/` (MCP) or the REST API.
+5. Start chatting with your agent in Talk.
 
 ## Commands
 
@@ -45,7 +68,7 @@ Search for **Chamade** in your Nextcloud app store and install it.
 | `/activate` | Group room | Authorize the bot to respond in this room |
 | `/deactivate` | Group room | Revoke the bot's access to this room |
 
-In DMs, the bot responds automatically to its owner — no activation needed.
+In 1:1 DMs, the bot responds automatically to its owner — no activation needed.
 
 ## Documentation
 
