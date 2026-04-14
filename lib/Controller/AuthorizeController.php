@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\ChamadeTalk\Controller;
 
 use OCA\ChamadeTalk\AppInfo\Application;
+use OCA\ChamadeTalk\Service\BotService;
 use OCA\ChamadeTalk\Traits\HmacVerification;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\JSONResponse;
@@ -44,6 +45,7 @@ class AuthorizeController extends Controller {
         private ISecureRandom $random,
         private IClientService $clientService,
         private LoggerInterface $logger,
+        private BotService $botService,
     ) {
         parent::__construct($appName, $request);
     }
@@ -255,6 +257,14 @@ class AuthorizeController extends Controller {
      */
     private function createBotAndCallback(string $callbackUrl, string $state, string $agentName, string $ownerNcUsername = ''): array {
         $brandId = str_replace('_talk', '', Application::APP_ID);
+
+        // Self-heal: the default Talk bot is only registered by
+        // InstallStep on fresh install, not on App Store update. Users
+        // upgrading from pre-2.2.0 never get default_bot_id populated,
+        // so AttendeesListener silently skips auto-enable and every
+        // bot room is stuck in text-only polling mode. Re-check here.
+        $brandName = $this->config->getAppValue(Application::APP_ID, 'brand_name', 'Chamade');
+        $this->botService->ensureDefaultBotInstalled($brandName);
 
         // Create bot user: {brand_id}-bot-{random}
         $suffix = strtolower($this->random->generate(8, ISecureRandom::CHAR_LOWER . ISecureRandom::CHAR_DIGITS));

@@ -39,6 +39,56 @@ class BotService {
      */
     public const BOT_URL = 'nextcloudapp://' . Application::APP_ID;
 
+    /**
+     * Idempotently ensure the default Talk bot is registered.
+     *
+     * InstallStep::ensureDefaultBot only runs on fresh app install. Users
+     * who installed an earlier version (pre-2.2.0, which never persisted
+     * default_bot_secret) and later updated via the App Store never re-run
+     * that step, so their bot never gets registered and every downstream
+     * hook (AttendeesListener::autoEnableBotForNewAttendees) gives up
+     * silently. Calling this at every bot-user creation self-heals them.
+     *
+     * Returns true if the bot is registered (either already or just now).
+     */
+    public function ensureDefaultBotInstalled(string $brandName): bool {
+        if ($this->getDefaultBotId() > 0) {
+            return true;
+        }
+        $existingSecret = $this->config->getAppValue(Application::APP_ID, 'default_bot_secret', '');
+        if (!empty($existingSecret)) {
+            // Secret persisted but bot row missing — spreed was probably
+            // uninstalled and reinstalled. Re-register with the same
+            // secret so nothing depending on it breaks.
+            try {
+                $this->installBot($brandName, $existingSecret);
+                return $this->getDefaultBotId() > 0;
+            } catch (\Throwable $e) {
+                $this->logger->warning("Bot re-registration failed: " . $e->getMessage(), [
+                    'app' => Application::APP_ID,
+                ]);
+                return false;
+            }
+        }
+        if (!class_exists(\OCA\Talk\Events\BotInstallEvent::class)) {
+            return false;
+        }
+        $secret = bin2hex(random_bytes(32));
+        try {
+            $this->installBot($brandName, $secret);
+            $this->config->setAppValue(Application::APP_ID, 'default_bot_secret', $secret);
+            $this->logger->info("Self-heal: registered default bot (missing from upgrade path)", [
+                'app' => Application::APP_ID,
+            ]);
+            return $this->getDefaultBotId() > 0;
+        } catch (\Throwable $e) {
+            $this->logger->warning("Self-heal bot registration failed: " . $e->getMessage(), [
+                'app' => Application::APP_ID,
+            ]);
+            return false;
+        }
+    }
+
     public function installBot(string $name, string $secret): void {
         $event = new BotInstallEvent(
             $name,
