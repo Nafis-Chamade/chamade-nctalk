@@ -54,8 +54,12 @@ echo "Syncing from maquisard..."
 
 # Files copied with branding only (no Chamade-specific content changes)
 REBRAND_FILES=(
+    "lib/AppInfo/Application.php"
     "lib/Controller/BotUserController.php"
     "lib/Controller/ConfigController.php"
+    "lib/Listener/AttendeesListener.php"
+    "lib/Listener/CallStateListener.php"
+    "lib/Service/BackendWebhookClient.php"
     "lib/Service/BotService.php"
     "lib/Service/TalkApiService.php"
     "lib/Traits/HmacVerification.php"
@@ -74,7 +78,6 @@ REBRAND_FILES=(
 #                              categories, major feature add), align BY HAND
 #                              between this repo and maquisard's info.xml.
 #   appinfo/routes.php       — no pairing/bridge routes
-#   lib/AppInfo/Application.php — no UserCreatedListener
 #   lib/Settings/AdminSettings.php — has callback_url
 #   lib/Controller/SettingsController.php — saves callback_url
 #   CHANGELOG.md
@@ -90,6 +93,13 @@ done
 
 # Binary files
 cp "$MQSR_SRC/img/app.png" "$SCRIPT_DIR/img/app.png" 2>/dev/null || true
+
+# Application.php: strip the comment line that references the private
+# maquisard source tree ("... paired with `/srv/apps/maquisard-...").
+# The information is useful for maquisard devs but leaks a private path
+# in the public repo and makes the branding validator fail.
+sed -i '/paired with the .hamade-side/,/inline constants in nctalk_probe.py/c\     * Used by ChatListener to detect an incoming event-dispatch probe\n     * (posted by the backend into a dedicated solo-bot room). The bracketed\n     * brand placeholder is filled in at match time. Any change to the nonce\n     * character set, length bounds, or surrounding literal must be mirrored\n     * on the Python side in the backend or probe round-trips break silently.' \
+    "$SCRIPT_DIR/lib/AppInfo/Application.php"
 
 # ── Step 3: Patch files that need Chamade-specific modifications ──
 # AuthorizeController: rebrand + callback_url from query param
