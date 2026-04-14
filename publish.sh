@@ -193,11 +193,20 @@ EOF
 fi
 
 # ── Step 9: Build tar.gz for web download ──
+# The NC App Store validator requires exactly one top-level directory
+# inside the archive — the app id. Tarring `.` with a --transform left
+# a stray `./` entry at the root alongside `chamade_talk/`, which the
+# validator rejects as "not a valid tar.gz archive". Stage the source
+# into a temp dir named chamade_talk/ and tar from the parent so the
+# app id is the single top-level entry with no siblings.
 TARBALL="chamade_talk-${MQSR_VERSION}.tar.gz"
-tar czf "$CHAMADE_DIR/static/$TARBALL" \
-    --transform='s,^\./,chamade_talk/,' \
-    --exclude='.git' --exclude='publish.sh' --exclude='*.tar.gz' \
-    .
+STAGING=$(mktemp -d)
+trap 'rm -rf "$STAGING"' EXIT
+cp -a "$SCRIPT_DIR" "$STAGING/chamade_talk"
+rm -rf "$STAGING/chamade_talk/.git" \
+       "$STAGING/chamade_talk/publish.sh"
+find "$STAGING/chamade_talk" -maxdepth 1 -name '*.tar.gz' -delete
+tar czf "$CHAMADE_DIR/static/$TARBALL" -C "$STAGING" chamade_talk
 echo "Built $TARBALL ✓"
 
 # ── Step 10: Update doc version + commit chamade ──
