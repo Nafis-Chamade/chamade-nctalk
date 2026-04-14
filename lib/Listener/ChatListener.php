@@ -46,19 +46,38 @@ class ChatListener implements IEventListener {
         $decoded = json_decode($content, true);
         $message = $decoded['message'] ?? $content;
 
-        // Skip messages from bot users (dynamic list maintained by BotUserController)
+        // actorId from BotInvokeEvent is always in ActivityStreams format
+        // ("users/<username>"), so normalize before comparing against bare
+        // username lists. Prior to 2.3.0 this normalization was missing and
+        // the bot-user self-filter silently never matched — every self-post
+        // (welcome DM, goodbye, etc.) was forwarded to the backend as if it
+        // came from the owner.
+        $brandId = str_replace('_talk', '', Application::APP_ID);
+        $bareActor = $this->bareUsername($actorId);
+
+        // Probe bypass: Chamade backend posts `__{brandId}_probe:<nonce>__`
+        // (silent=1) as the bot into the owner DM right after connect, to
+        // verify end-to-end that BotInvokeEvent dispatch actually reaches
+        // this listener on the target Nextcloud. Gated to known bot users
+        // only — an unprivileged NC user cannot spoof a probe.
         $botUsers = json_decode(
             $this->config->getAppValue(Application::APP_ID, 'bot_users', '[]'),
             true
         ) ?: [];
-        if (in_array($actorId, $botUsers)) {
+        // Prefix fallback is narrowly scoped to `{brand}-bot-*` — the bare
+        // `{brand}-*` match used to be in here too but would silently drop
+        // legitimate usernames like `chamade-beta-tester`. Callers that
+        // rely on the bot_users appconfig still work identically.
+        $isBotUser = in_array($bareActor, $botUsers, true)
+            || str_starts_with($bareActor, $brandId . '-bot-');
+        $probeRegex = sprintf(Application::PROBE_MARKER_REGEX_TEMPLATE, preg_quote($brandId, '/'));
+        if ($isBotUser && preg_match($probeRegex, trim($message), $m) === 1) {
+            $this->forwardProbe($m[1], $bareActor, $roomToken);
             return;
         }
-        // Also filter by known bot prefixes
-        $brandId = str_replace('_talk', '', Application::APP_ID);
-        if (str_starts_with($actorId, $brandId . '-bot-')
-            || str_starts_with($actorId, $brandId . '-')
-        ) {
+
+        // Skip other messages from bot users.
+        if ($isBotUser) {
             return;
         }
 
@@ -272,5 +291,45 @@ class ChatListener implements IEventListener {
      */
     private function bareUsername(string $actorId): string {
         return str_contains($actorId, '/') ? substr($actorId, strrpos($actorId, '/') + 1) : $actorId;
+    }
+
+    /**
+     * Forward a probe event to the Chamade backend. HMAC-signed (same scheme
+     * as the chat webhook). Best-effort: any failure just means the backend
+     * will time out its probe and fall back to polling mode.
+     */
+    private function forwardProbe(string $nonce, string $botLogin, string $roomToken): void {
+        $backendUrl = $this->config->getAppValue(Application::APP_ID, 'backend_url', '');
+        $apiSecret = $this->config->getAppValue(Application::APP_ID, 'api_secret', '');
+        if (empty($backendUrl) || empty($apiSecret)) {
+            return;
+        }
+
+        $url = rtrim($backendUrl, '/') . '/api/nctalk/probe';
+        $payload = json_encode([
+            'nonce' => $nonce,
+            'bot_login' => $botLogin,
+            'room_token' => $roomToken,
+        ]);
+
+        $random = bin2hex(random_bytes(16));
+        $signature = hash_hmac('sha256', $random, $apiSecret);
+
+        try {
+            $client = $this->clientService->newClient();
+            $client->post($url, [
+                'headers' => [
+                    'Content-Type' => 'application/json',
+                    'X-Maquis' . 'ard-Random' => $random,
+                    'X-Maquis' . 'ard-Signature' => $signature,
+                ],
+                'body' => $payload,
+                'timeout' => 10,
+            ]);
+        } catch (\Exception $e) {
+            $this->logger->warning("Probe forward failed: " . $e->getMessage(), [
+                'app' => Application::APP_ID,
+            ]);
+        }
     }
 }

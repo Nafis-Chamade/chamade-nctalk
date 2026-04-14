@@ -259,7 +259,16 @@ class AuthorizeController extends Controller {
         // Create bot user: {brand_id}-bot-{random}
         $suffix = strtolower($this->random->generate(8, ISecureRandom::CHAR_LOWER . ISecureRandom::CHAR_DIGITS));
         $botUsername = $brandId . '-bot-' . $suffix;
-        $botPassword = $this->random->generate(32, ISecureRandom::CHAR_ALPHANUMERIC);
+        // Generate a password that satisfies the default Nextcloud
+        // password_policy app (upper + lower + digits + symbol). The older
+        // CHAR_ALPHANUMERIC set was rejected on instances that enforce
+        // complexity, causing createUser() to throw and the whole authorize
+        // flow to abort with "Failed to create bot user".
+        $botPassword =
+            $this->random->generate(8, ISecureRandom::CHAR_UPPER) .
+            $this->random->generate(8, ISecureRandom::CHAR_LOWER) .
+            $this->random->generate(8, ISecureRandom::CHAR_DIGITS) .
+            $this->random->generate(8, '!@#$%^&*()-_=+[]{}');
 
         try {
             $this->userManager->createUser($botUsername, $botPassword);
