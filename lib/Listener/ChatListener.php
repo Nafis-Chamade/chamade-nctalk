@@ -46,6 +46,27 @@ class ChatListener implements IEventListener {
         $decoded = json_decode($content, true);
         $message = $decoded['message'] ?? $content;
 
+        // Extract file attachments from messageParameters, if any. NC Talk
+        // represents file shares as a regular comment with `message = "{file}"`
+        // and `parameters.file = {type, id, name, size, mimetype, path, …}`.
+        // We forward the metadata so the backend can refetch the bytes via
+        // WebDAV with the bot's credentials. Forward additional parameter
+        // entries whose type === 'file' (e.g. multi-file shares expose
+        // parameters.file, parameters.file2, …).
+        $attachments = [];
+        foreach (($decoded['parameters'] ?? []) as $pkey => $param) {
+            if (!is_array($param) || ($param['type'] ?? '') !== 'file') {
+                continue;
+            }
+            $attachments[] = [
+                'file_id' => (string)($param['id'] ?? ''),
+                'name' => (string)($param['name'] ?? 'file'),
+                'mime' => (string)($param['mimetype'] ?? 'application/octet-stream'),
+                'size' => (int)($param['size'] ?? 0),
+                'path' => (string)($param['path'] ?? ''),
+            ];
+        }
+
         // actorId from BotInvokeEvent is always in ActivityStreams format
         // ("users/<username>"), so normalize before comparing against bare
         // username lists. Prior to 2.3.0 this normalization was missing and
@@ -109,34 +130,46 @@ class ChatListener implements IEventListener {
             return;
         }
 
-        // Get room type for is_dm detection via OCS REST. Uses a bot user's
-        // credentials (any bot user is a participant/moderator of every room
-        // we care about — DMs, /activate'd groups), so we don't need the
-        // legacy `service_user` path which was never populated in the first
-        // place.
-        $roomType = $this->lookupRoomType($roomToken);
-
-        // Identify which bot this message is for by matching the sender against
-        // bot_owners (populated by AuthorizeController::createBotAndCallback).
-        // For 1:1 DMs this is unambiguous; for group rooms the first bot owned
-        // by the sender wins (acceptable for single-user scenarios).
+        // Identify the bot that actually received this message by probing
+        // each known bot user against the target room's OCS endpoint. The
+        // first one that returns room info is (by NC's access model) a
+        // participant/moderator of that room — i.e. the bot that was DMed
+        // or added to the group. This is robust in setups where a single
+        // NC hosts bots from multiple Chamade accounts (or a sender owns
+        // multiple bots on the same NC) — the previous "first bot owned by
+        // sender" heuristic picked the wrong bot there and Chamade fell
+        // back to a stale room→bot mapping owned by someone else, silently
+        // rejecting legitimate DMs.
+        //
+        // Side-effect: also returns the room type, so we fold the existing
+        // lookupRoomType() call into the same iteration (saves one HTTP
+        // round-trip per message for the common case).
+        [$botUser, $roomType] = $this->resolveBotAndRoomType($roomToken);
         $botOwners = json_decode(
             $this->config->getAppValue(Application::APP_ID, 'bot_owners', '{}'),
             true
         ) ?: [];
         $bareSender = $this->bareUsername($actorId);
-        $botUser = '';
-        $botOwner = '';
-        foreach ($botOwners as $botUsername => $ownerUsername) {
-            if ($ownerUsername === $bareSender) {
-                $botUser = (string) $botUsername;
-                $botOwner = (string) $ownerUsername;
-                break;
+        $botOwner = $botUser !== '' ? ($botOwners[$botUser] ?? '') : '';
+
+        // Legacy fallback: pre-2.2.0 installs that upgraded without
+        // re-authorizing don't have `bot_passwords` populated for their
+        // bot users, so the probe above returns nothing. In that case
+        // fall back to the old sender-owner heuristic so those users
+        // aren't suddenly locked out of their own bots on upgrade to
+        // 2.4.1. New setups always hit the probe path.
+        if ($botUser === '') {
+            foreach ($botOwners as $candidateBot => $ownerUsername) {
+                if ($ownerUsername === $bareSender) {
+                    $botUser = (string) $candidateBot;
+                    $botOwner = (string) $ownerUsername;
+                    break;
+                }
             }
         }
 
         $webhookUrl = rtrim($backendUrl, '/') . '/api/nctalk/chat';
-        $payload = json_encode([
+        $payloadData = [
             'type' => $type,
             'room_token' => $roomToken,
             'sender' => $actorName,
@@ -145,7 +178,11 @@ class ChatListener implements IEventListener {
             'room_type' => $roomType,
             'bot_user' => $botUser,
             'bot_owner' => $botOwner,
-        ]);
+        ];
+        if (!empty($attachments)) {
+            $payloadData['attachments'] = $attachments;
+        }
+        $payload = json_encode($payloadData);
 
         // HMAC auth
         $random = bin2hex(random_bytes(16));
@@ -245,12 +282,26 @@ class ChatListener implements IEventListener {
      * proceed without DM-specific behavior.
      */
     private function lookupRoomType(string $roomToken): int {
+        // Kept for backwards-compat with any future caller; the main flow
+        // now goes through resolveBotAndRoomType() which computes both in
+        // one pass.
+        return $this->resolveBotAndRoomType($roomToken)[1];
+    }
+
+    /**
+     * Probe each known bot user against the target room's OCS endpoint.
+     * The first bot that returns room info is a participant there — that's
+     * THE bot receiving this message. Returns [bot_username, room_type].
+     * Returns ['', 0] if no bot is a member (shouldn't happen in practice,
+     * since BotInvokeEvent fires only when one of our bots is addressed).
+     */
+    private function resolveBotAndRoomType(string $roomToken): array {
         $botPasswords = json_decode(
             $this->config->getAppValue(Application::APP_ID, 'bot_passwords', '{}'),
             true
         ) ?: [];
         if (!is_array($botPasswords) || empty($botPasswords)) {
-            return 0;
+            return ['', 0];
         }
         foreach ($botPasswords as $username => $password) {
             if (!is_string($username) || !is_string($password) || $password === '') {
@@ -258,10 +309,10 @@ class ChatListener implements IEventListener {
             }
             $info = $this->talkApi->getRoomInfo($roomToken, $username, $password);
             if ($info !== null) {
-                return (int) ($info['type'] ?? 0);
+                return [(string) $username, (int) ($info['type'] ?? 0)];
             }
         }
-        return 0;
+        return ['', 0];
     }
 
     /**
