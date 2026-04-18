@@ -1,42 +1,14 @@
 /**
- * Admin settings form handler for chamade_talk.
+ * Admin settings — {brand_id}_talk.
+ *
+ * The settings page is purely diagnostic as of v2.5.0: the only action
+ * is the "Connect to Chamade" anchor (a plain <a href> that initiates
+ * the inverse OAuth flow via the `connect-start` route). There is no
+ * form to submit, no pair-code to generate, no user-links table to
+ * refresh — all of that was removed when the pairing model switched
+ * to the browser-redirect consent flow.
+ *
+ * This file is intentionally left empty; kept as a placeholder so the
+ * `script()` call in `templates/settings.php` doesn't 404 on older
+ * installs that still have the stale asset cached.
  */
-document.addEventListener('DOMContentLoaded', function () {
-    var appId = 'chamade_talk';
-
-    var form = document.getElementById('chamade-settings-form');
-    var status = document.getElementById('chamade-save-status');
-
-    if (!form) return;
-
-    form.addEventListener('submit', function (e) {
-        e.preventDefault();
-        status.textContent = t(appId, 'Saving…');
-
-        var data = new FormData(form);
-        var body = {};
-        data.forEach(function (value, key) {
-            body[key] = value;
-        });
-
-        fetch(OC.generateUrl('/apps/' + appId + '/settings'), {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'requesttoken': OC.requestToken,
-            },
-            body: JSON.stringify(body),
-        })
-        .then(function (resp) {
-            if (resp.ok) {
-                status.textContent = t(appId, 'Saved');
-                setTimeout(function () { status.textContent = ''; }, 2000);
-            } else {
-                status.textContent = t(appId, 'Error saving settings');
-            }
-        })
-        .catch(function () {
-            status.textContent = t(appId, 'Network error');
-        });
-    });
-});

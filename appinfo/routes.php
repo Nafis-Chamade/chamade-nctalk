@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * Routes for the chamade_talk NC app.
+ * Routes for the {brand_id}_talk NC app.
  * All API routes are public (HMAC-verified at controller level).
  */
 
@@ -13,30 +13,32 @@ return [
         ['name' => 'settings#index',  'url' => '/settings',  'verb' => 'GET'],
         ['name' => 'settings#save',   'url' => '/settings',  'verb' => 'POST'],
 
-        // HMAC API — called by bridge service
+        // HMAC API — called by Chamade Python service
         ['name' => 'config#getConfig',           'url' => '/api/v1/config',                        'verb' => 'GET'],
         ['name' => 'config#getAuthorizedRooms',  'url' => '/api/v1/authorized-rooms',              'verb' => 'GET'],
         ['name' => 'config#setAuthorizedRooms',  'url' => '/api/v1/authorized-rooms',              'verb' => 'PUT'],
-        ['name' => 'config#getSignalingTicket',   'url' => '/api/v1/signaling/{roomToken}',         'verb' => 'GET'],
-        ['name' => 'config#joinRoom',             'url' => '/api/v1/rooms/{token}/join',             'verb' => 'POST'],
-        ['name' => 'config#getRoomInfo',          'url' => '/api/v1/rooms/{token}/info',             'verb' => 'GET'],
-        ['name' => 'config#createRoom',           'url' => '/api/v1/rooms',                          'verb' => 'POST'],
-        ['name' => 'config#deleteRoom',           'url' => '/api/v1/rooms/{token}',                  'verb' => 'DELETE'],
-        ['name' => 'config#createBot',            'url' => '/api/v1/bots',                           'verb' => 'POST'],
-        ['name' => 'config#deleteBot',            'url' => '/api/v1/bots/{botId}',                   'verb' => 'DELETE'],
-        ['name' => 'config#enableBotInRoom',      'url' => '/api/v1/bots/{botId}/rooms/{token}',     'verb' => 'POST'],
-        // Bot user management — HMAC
-        ['name' => 'botUser#create',             'url' => '/api/v1/bot-users',                      'verb' => 'POST'],
+        ['name' => 'config#getSignalingTicket',  'url' => '/api/v1/signaling/{roomToken}',         'verb' => 'GET'],
+        ['name' => 'config#joinRoom',            'url' => '/api/v1/rooms/{token}/join',            'verb' => 'POST'],
+
+        // Bot user management — HMAC (only endpoints actually called by Python)
         ['name' => 'botUser#delete',             'url' => '/api/v1/bot-users/{username}',            'verb' => 'DELETE'],
-        ['name' => 'botUser#updateDisplayName',  'url' => '/api/v1/bot-users/{username}/display-name', 'verb' => 'PUT'],
         ['name' => 'botUser#postMessage',        'url' => '/api/v1/bot-users/{username}/post',      'verb' => 'POST'],
         ['name' => 'botUser#uploadAvatar',       'url' => '/api/v1/bot-users/{username}/avatar',    'verb' => 'POST'],
-        ['name' => 'botUser#ensureInRoom',       'url' => '/api/v1/bot-users/ensure-in-room',       'verb' => 'POST'],
 
-        // Authorization flow — NC session + CSRF (user-facing)
+        // Authorization flow — NC session + CSRF (user-facing, legacy
+        // Chamade-first path — kept for backward compat with already-
+        // deployed gateway builds that haven't shipped the inverse flow
+        // yet. New installs should use the NC-first flow below.)
         ['name' => 'authorize#show',             'url' => '/authorize',                             'verb' => 'GET'],
         ['name' => 'authorize#approve',          'url' => '/authorize',                             'verb' => 'POST'],
-        // Automated authorize — HMAC (for e2e tests / provisioning)
+        // Automated authorize — HMAC (e2e tests / programmatic provisioning)
         ['name' => 'authorize#autoApprove',      'url' => '/api/v1/authorize',                      'verb' => 'POST'],
+
+        // NC-first inverse OAuth flow — admin clicks "Connect to Chamade"
+        // in the addon settings page (or a Chamade-dashboard deeplink
+        // redirects here). See ConnectController phpdoc for the full
+        // state machine.
+        ['name' => 'connect#connectStart',       'url' => '/connect-start',                         'verb' => 'GET'],
+        ['name' => 'connect#authorizeFinish',    'url' => '/authorize/finish',                      'verb' => 'GET'],
     ],
 ];

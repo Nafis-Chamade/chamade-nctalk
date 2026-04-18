@@ -145,19 +145,24 @@ class UninstallStep implements IRepairStep {
      * Wiped:
      *   - default_bot_secret / default_bot_id      (Talk bot registration)
      *   - bot_users / bot_passwords / bot_owners   (NC bot user accounts)
-     *   - pair_code / pair_code_expires            (ephemeral)
+     *   - pair_code / pair_code_expires            (ephemeral, legacy pair flow)
+     *   - pending_nc_state                         (ephemeral inverse-OAuth state)
      *
-     * Preserved (partner service coordinates — admins explicitly set these
-     * once and expect them to survive a troubleshooting disable cycle):
+     * Preserved (gateway pairing coordinates — admins explicitly paired
+     * once and expect the pairing to survive a troubleshooting disable
+     * cycle; re-authorize per-user is cheap):
      *   - api_secret            (HMAC shared with the Chamade backend)
      *   - callback_url          (Chamade redirect target on authorize)
      *   - backend_url           (ChatListener webhook target)
-     *   - partner_url           (partner service user-links sync target)
-     *   - api_key               (optional HTTP auth shared secret)
+     *   - gateway_url           (admin override for dev gateways)
      *   - brand_name            (cosmetic)
      *   - authorized_rooms      (group rooms the owner explicitly /activate'd —
      *                            keyed on NC username which survives)
-     *   - user_links            (partner side user link cache)
+     *
+     * Also preserved but no longer actively used (kept only so a disable
+     * cycle on a pre-2.5.0 instance doesn't surprise the admin — safe to
+     * remove in a later major bump):
+     *   - partner_url, api_key, user_links
      */
     private function deleteAppConfig(IOutput $output): void {
         $keysToDelete = [
@@ -168,6 +173,7 @@ class UninstallStep implements IRepairStep {
             'bot_owners',
             'pair_code',
             'pair_code_expires',
+            'pending_nc_state',
         ];
         foreach ($keysToDelete as $key) {
             $this->config->deleteAppValue(Application::APP_ID, $key);

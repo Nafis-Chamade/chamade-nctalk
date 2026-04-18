@@ -43,20 +43,35 @@ rebrand() {
     sed \
         -e 's/MaquisardTalk/ChamadeTalk/g' \
         -e 's/maquisard_talk/chamade_talk/g' \
-        -e 's/maquisard-talk/chamade-talk/g' \
+        -e 's/maquisard-/chamade-/g' \
         -e 's/Maquisard/Chamade/g' \
         "$1" > "$2"
+    # `maquisard-` covers both the app-id-style slug (maquisard-talk) and
+    # the CSS class prefix convention (maquisard-note, maquisard-field, …)
+    # used in templates/settings.php and similar files. Mirrors the rule
+    # in build-appstore.sh.
+    #
     # The sed above renames X-Maquisard-* headers too, but they use string
     # concatenation ('X-Maquis' . 'ard-') which survives the replacement.
 }
 
 echo "Syncing from maquisard..."
 
-# Files copied with branding only (no Chamade-specific content changes)
+# Files copied with branding only (no Chamade-specific content changes).
+#
+# As of v2.5.0 the admin surface converged between maquisard and
+# chamade: both use the inverse OAuth flow with a diagnostic-only
+# settings page, so settings.php / routes.php / AdminSettings /
+# SettingsController / js/settings.js / ConnectController are now
+# rebrand-identical and can be auto-synced. Before 2.5.0 these
+# files had to be maintained locally because chamade-nctalk stored
+# callback_url in admin config while the maquisard source did not.
 REBRAND_FILES=(
     "lib/AppInfo/Application.php"
     "lib/Controller/BotUserController.php"
     "lib/Controller/ConfigController.php"
+    "lib/Controller/ConnectController.php"
+    "lib/Controller/SettingsController.php"
     "lib/Listener/AttendeesListener.php"
     "lib/Listener/CallStateListener.php"
     "lib/Service/BackendWebhookClient.php"
@@ -65,11 +80,13 @@ REBRAND_FILES=(
     "lib/Traits/HmacVerification.php"
     "lib/Migration/InstallStep.php"
     "lib/Migration/UninstallStep.php"
+    "lib/Settings/AdminSettings.php"
+    "templates/settings.php"
+    "appinfo/routes.php"
+    "js/settings.js"
 )
 # NOT copied from maquisard (maintained locally in this repo):
 #   templates/authorize.php  — l10n keys differ from maquisard version
-#   templates/settings.php   — no pairing UI, has callback_url
-#   js/settings.js           — no pairing JS
 #   l10n/*.json              — Chamade-specific strings
 #   appinfo/info.xml         — Chamade description/URLs (marketing copy, MCP
 #                              pitch, platforms list, early-access mention).
@@ -77,9 +94,6 @@ REBRAND_FILES=(
 #                              When the addon identity evolves (name, summary,
 #                              categories, major feature add), align BY HAND
 #                              between this repo and maquisard's info.xml.
-#   appinfo/routes.php       — no pairing/bridge routes
-#   lib/Settings/AdminSettings.php — has callback_url
-#   lib/Controller/SettingsController.php — saves callback_url
 #   CHANGELOG.md
 
 for f in "${REBRAND_FILES[@]}"; do

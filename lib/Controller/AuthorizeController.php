@@ -251,6 +251,15 @@ class AuthorizeController extends Controller {
     // ========================================================================
 
     /**
+     * Public entry point for other controllers to run the approval step.
+     * ConnectController (NC-first inverse flow) calls this after validating
+     * its own state — keeps bot-creation logic in a single place.
+     */
+    public function processApproval(string $callbackUrl, string $state, string $agentName, string $ownerNcUsername = ''): array {
+        return $this->createBotAndCallback($callbackUrl, $state, $agentName, $ownerNcUsername);
+    }
+
+    /**
      * Create bot user, register in appconfig, callback to external service.
      * Returns ['error' => null, 'bot_login' => string] on success,
      * or ['error' => JSONResponse, 'bot_login' => ''] on failure.

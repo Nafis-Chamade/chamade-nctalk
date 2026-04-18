@@ -11,7 +11,15 @@ use OCP\IConfig;
 use OCP\IRequest;
 
 /**
- * Admin settings save handler — handles POST from the settings form.
+ * Legacy admin settings save handler.
+ *
+ * As of v2.5.0 the admin settings page has no editable fields — all
+ * pairing state is set authoritatively by the inverse OAuth connect
+ * flow (see ConnectController). This endpoint is retained so the
+ * route registration doesn't 404 on a POST from stale client JS, but
+ * it no longer writes anything. The structural fix for the miskov
+ * incident closes the write path entirely: there's nowhere left for
+ * an admin to manually set a wrong backend_url.
  */
 class SettingsController extends Controller {
 
@@ -24,15 +32,9 @@ class SettingsController extends Controller {
     }
 
     public function save(): JSONResponse {
-        $fields = ['backend_url', 'api_key', 'callback_url'];
-
-        foreach ($fields as $field) {
-            $value = $this->request->getParam($field);
-            if ($value !== null) {
-                $this->config->setAppValue(Application::APP_ID, $field, $value);
-            }
-        }
-
-        return new JSONResponse(['status' => 'ok']);
+        return new JSONResponse([
+            'status' => 'noop',
+            'message' => 'Pairing is now managed via the Connect flow; no editable fields.',
+        ]);
     }
 }

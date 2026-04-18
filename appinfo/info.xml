@@ -41,7 +41,7 @@ Your agent can bridge a Talk conversation to any of these, or simply be reachabl
 4. Hook your agent up to `https://mcp.chamade.io/mcp/` (MCP) or the REST API
 5. Start chatting with your agent in Talk
     ]]></description>
-    <version>2.4.1</version>
+    <version>2.5.0</version>
     <licence>AGPL-3.0-or-later</licence>
     <author mail="contact@skilpa.be" homepage="https://skilpa.be">Skilpa</author>
     <namespace>ChamadeTalk</namespace>
