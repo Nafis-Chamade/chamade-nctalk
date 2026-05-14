@@ -6,6 +6,7 @@ namespace OCA\ChamadeTalk\Controller;
 
 use OCA\ChamadeTalk\AppInfo\Application;
 use OCA\ChamadeTalk\Service\BotService;
+use OCA\ChamadeTalk\Service\E2eeService;
 use OCA\ChamadeTalk\Traits\HmacVerification;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\JSONResponse;
@@ -46,6 +47,7 @@ class AuthorizeController extends Controller {
         private IClientService $clientService,
         private LoggerInterface $logger,
         private BotService $botService,
+        private E2eeService $e2ee,
     ) {
         parent::__construct($appName, $request);
     }
@@ -380,6 +382,13 @@ class AuthorizeController extends Controller {
                     'api_secret' => $apiSecret,
                     'app_id' => $appId,
                     'nc_username' => $ownerNcUsername,
+                    // v3.0+ capability advertisement. Chamade persists these
+                    // per-connection and uses them to route chat sends
+                    // (unified_send → addon endpoint, otherwise OCS).
+                    // e2ee_schemes reflects admin state at callback time;
+                    // the user reconnects after toggling E2EE to refresh.
+                    'capabilities' => ['unified_send'],
+                    'e2ee_schemes' => $this->e2ee->isEnabled() ? [E2eeService::SCHEME] : [],
                 ]),
                 'timeout' => 15,
             ]);

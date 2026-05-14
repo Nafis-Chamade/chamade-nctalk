@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [3.0.0] — 2026-05-14
+
+### Added
+- **End-to-end encryption for chat.** Sealed-box x25519 (NaCl `crypto_box_seal`) between the addon and the user's AI agent host. Each side holds its own keypair: the addon stores its keypair in this Nextcloud's app config, the agent host stores its own. Messages are sealed for the recipient's public key on the way out and opened on arrival; the Chamade gateway only relays opaque ciphertext and never holds the private keys. A new admin section under Settings → Talk lets the operator toggle E2EE, regenerate the addon's keypair, view the addon pubkey + fingerprint + device id, and manage paired agent shim device keys (add / remove / verify by fingerprint). State persists in appconfig. PHP `ext-sodium` on the addon side matches the libsodium-wrappers implementation on the shim side byte-for-byte. Opt-in: off by default, no behavior change for existing installs. Call audio still flows through the standard High-Performance Backend — E2EE is chat-only in this release.
+- **Unified send endpoint** `POST /api/v1/messages/{token}` (`MessageController::send`). HMAC-authed like the rest of the addon's gateway-facing routes. Accepts `{bot_username, content?, encrypted?}` (mutually exclusive). Plaintext path forwards via `TalkApiService::sendMessage`; encrypted path is decrypted with the addon's private key before forwarding. The legacy OCS send stays in place — Chamade picks between the two paths based on the capability set advertised in the authorize callback, so older addons (≤ 2.5.0) keep working unchanged.
+- **Capability advertisement and heartbeat.** The `/authorize/finish` callback now includes `addon_capabilities` and `addon_e2ee_schemes` so the gateway knows whether the new send path and E2EE are available on this instance. An `/api/e2ee/heartbeat` POST is sent after every admin E2EE action so the gateway's view of capabilities stays in sync without polling.
+
+### Fixed
+- `GET /settings` returned a 500 because `routes.php` declared it as `settings#index` but `SettingsController` only had `save()`. Any admin who landed on the addon's settings URL directly (e.g. via Nextcloud "Apps" admin) hit the unresolved method. Rerouted the GET to the existing `save()`, which returns a noop JSON read-only payload — the addon has had no admin-editable fields since 2.5.0.
+- `AdminSettings::getForm()` now calls `\OCP\Util::addScript()`. Without it `js/settings.js` never loaded on the admin section, and the E2EE toggle / regenerate / add-device / remove-device buttons rendered with no click handlers — the page was inert.
+
 ## [2.5.0] — 2026-04-18
 
 ### Added

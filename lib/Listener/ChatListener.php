@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\ChamadeTalk\Listener;
 
 use OCA\ChamadeTalk\AppInfo\Application;
+use OCA\ChamadeTalk\Service\E2eeService;
 use OCA\ChamadeTalk\Service\TalkApiService;
 use OCA\Talk\Events\BotInvokeEvent;
 use OCP\EventDispatcher\Event;
@@ -25,6 +26,7 @@ class ChatListener implements IEventListener {
         private IConfig $config,
         private IClientService $clientService,
         private TalkApiService $talkApi,
+        private E2eeService $e2ee,
         private LoggerInterface $logger,
     ) {
     }
@@ -182,6 +184,36 @@ class ChatListener implements IEventListener {
         if (!empty($attachments)) {
             $payloadData['attachments'] = $attachments;
         }
+
+        // E2EE encrypt fanout — only for real user messages. Commands
+        // (`/*`) and attachment-carrying messages stay plaintext so
+        // auto_messages.py, /activate, and attachment routing keep
+        // working. docs/E2EE.md §5.3.
+        $isCommand = str_starts_with($trimmedMessage, '/');
+        $hasAttachments = !empty($attachments);
+        if ($this->e2ee->isEnabled() && !$isCommand && !$hasAttachments && $message !== '') {
+            try {
+                $block = $this->e2ee->encrypt($message);
+            } catch (\Throwable $e) {
+                $this->logger->warning(
+                    'E2EE encrypt failed, falling back to plaintext: ' . $e->getMessage(),
+                    ['app' => Application::APP_ID],
+                );
+                $block = null;
+            }
+            if ($block !== null) {
+                // Zero-knowledge: drop plaintext and transport only the
+                // opaque block. Chamade treats a missing `message` plus a
+                // non-empty `encrypted` as the E2EE path (see chamade
+                // events.py passthrough).
+                unset($payloadData['message']);
+                $payloadData['encrypted'] = $block;
+            }
+            // If encrypt returned null (no devices paired), we fall back to
+            // plaintext forwarding. The admin UI flags "no devices" so the
+            // user knows they still need to paste a shim pubkey.
+        }
+
         $payload = json_encode($payloadData);
 
         // HMAC auth

@@ -96,6 +96,101 @@ $errorBanner = isset($_GET['error']) ? (string) $_GET['error'] : '';
         </em>
     </div>
 
+    <!-- E2EE — zero-knowledge chat (v3.0+). Separate section so it's
+         visually distinct from pairing. The keypair + device list below
+         never leave this NC server. -->
+    <?php
+    $e2eeAvailable = (bool) ($_['e2ee_available'] ?? false);
+    $e2eeEnabled = (bool) ($_['e2ee_enabled'] ?? false);
+    $e2eePubkey = (string) ($_['e2ee_pubkey_b64'] ?? '');
+    $e2eeDeviceId = (string) ($_['e2ee_device_id'] ?? '');
+    $e2eeFingerprint = (string) ($_['e2ee_fingerprint'] ?? '');
+    $e2eeDevices = is_array($_['e2ee_devices'] ?? null) ? $_['e2ee_devices'] : [];
+    ?>
+    <section id="chamade-e2ee" style="margin-top: 32px;">
+        <h3><?php p($l->t('End-to-end encryption (experimental)')); ?></h3>
+        <p class="settings-hint">
+            <?php p($l->t(
+                'When enabled, user ↔ agent messages through this bridge are '
+                . 'encrypted between your Nextcloud and the agent\'s MCP shim. '
+                . 'Chamade transits opaque ciphertext. Commands (/help, /activate) '
+                . 'and auto-messages stay in plaintext — documented behaviour.'
+            )); ?>
+        </p>
+
+        <?php if (!$e2eeAvailable): ?>
+        <div class="chamade-note chamade-note--warning">
+            <span class="chamade-note-icon" aria-hidden="true">!</span>
+            <span><?php p($l->t('libsodium (ext-sodium) is not loaded on this PHP. E2EE cannot run here.')); ?></span>
+        </div>
+        <?php else: ?>
+        <div class="chamade-field">
+            <label class="chamade-field-inline">
+                <input type="checkbox" id="chamade-e2ee-toggle" <?php if ($e2eeEnabled) echo 'checked'; ?>>
+                <?php p($l->t('Enable E2EE on this addon')); ?>
+            </label>
+            <em class="chamade-help">
+                <?php p($l->t('Generates a curve25519 keypair on first enable. Disable to fall back to plaintext transit.')); ?>
+            </em>
+        </div>
+
+        <?php if ($e2eePubkey !== ''): ?>
+        <div class="chamade-field">
+            <label><?php p($l->t('Addon public key (paste into shim)')); ?></label>
+            <input type="text" value="<?php p($e2eePubkey); ?>" readonly class="chamade-readonly" />
+            <em class="chamade-help">
+                <?php p($l->t('Fingerprint:')); ?>
+                <code><?php p($e2eeFingerprint); ?></code><br>
+                <?php p($l->t('Device ID:')); ?>
+                <code><?php p($e2eeDeviceId); ?></code>
+            </em>
+            <div style="margin-top: 8px;">
+                <button type="button" id="chamade-e2ee-regen" class="button">
+                    <?php p($l->t('Regenerate keypair')); ?>
+                </button>
+                <em class="chamade-help">
+                    <?php p($l->t('Paired shims must re-paste this new pubkey after rotation.')); ?>
+                </em>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <div class="chamade-field" style="margin-top: 16px;">
+            <h4 style="margin: 0 0 8px 0;"><?php p($l->t('Paired shims (devices)')); ?></h4>
+            <ul id="chamade-e2ee-devices" class="chamade-device-list">
+                <?php if (empty($e2eeDevices)): ?>
+                    <li class="chamade-device-empty">
+                        <?php p($l->t('No devices paired yet. Run `chamade_e2ee_enable` in your shim, then paste its pubkey below.')); ?>
+                    </li>
+                <?php else: foreach ($e2eeDevices as $dev): ?>
+                    <li data-device-id="<?php p($dev['device_id']); ?>">
+                        <div>
+                            <strong><?php p(($dev['label'] ?: $l->t('(no label)'))); ?></strong>
+                            <code style="font-size: 0.8em;"><?php p($dev['device_id']); ?></code>
+                        </div>
+                        <div class="chamade-help">
+                            <?php p($l->t('Fingerprint:')); ?>
+                            <code><?php p($dev['fingerprint']); ?></code>
+                        </div>
+                        <button type="button" class="button chamade-e2ee-device-remove" data-device-id="<?php p($dev['device_id']); ?>">
+                            <?php p($l->t('Remove')); ?>
+                        </button>
+                    </li>
+                <?php endforeach; endif; ?>
+            </ul>
+        </div>
+
+        <div class="chamade-field">
+            <label for="chamade-e2ee-new-pubkey"><?php p($l->t('Add a shim pubkey')); ?></label>
+            <input type="text" id="chamade-e2ee-new-pubkey" placeholder="base64-encoded curve25519 pubkey" />
+            <input type="text" id="chamade-e2ee-new-label" placeholder="<?php p($l->t('label (optional, e.g. \'laptop\')')); ?>" />
+            <button type="button" id="chamade-e2ee-add-device" class="button primary">
+                <?php p($l->t('Add device')); ?>
+            </button>
+        </div>
+        <?php endif; /* e2eeAvailable */ ?>
+    </section>
+
     <!-- Diagnostic: display api_secret (read-only) for support/troubleshooting. -->
     <?php if ($_['api_secret'] !== ''): ?>
     <details class="chamade-diag">
