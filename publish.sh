@@ -193,7 +193,7 @@ fi
 # ── Step 8: Commit + push public repo ──
 if ! git diff --quiet HEAD 2>/dev/null; then
     git add -A
-    git -c user.name="Skilpa" -c user.email="contact@skilpa.be" \
+    git -c user.name="Skilpa" -c user.email="contact@nafis.io" \
         commit -m "$(cat <<EOF
 Update chamade_talk to v${MQSR_VERSION}
 
@@ -233,7 +233,7 @@ fi
 cd "$CHAMADE_DIR"
 if ! git diff --quiet -- static/"$TARBALL" chamade/templates/docs/nctalk.html 2>/dev/null; then
     git add "static/$TARBALL" "chamade/templates/docs/nctalk.html"
-    git -c user.name="Skilpa" -c user.email="contact@skilpa.be" \
+    git -c user.name="Skilpa" -c user.email="contact@nafis.io" \
         commit -m "$(cat <<EOF
 Update NC Talk addon to v${MQSR_VERSION}
 

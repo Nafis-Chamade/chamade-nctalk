@@ -47,7 +47,7 @@ Your agent can bridge a Talk conversation to any of these, or simply be reachabl
     ]]></description>
     <version>3.0.1</version>
     <licence>AGPL-3.0-or-later</licence>
-    <author mail="contact@skilpa.be" homepage="https://skilpa.be">Skilpa</author>
+    <author mail="contact@nafis.io" homepage="https://nafis.io">Skilpa</author>
     <namespace>ChamadeTalk</namespace>
     <category>ai</category>
     <category>integration</category>
