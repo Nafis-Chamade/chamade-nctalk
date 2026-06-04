@@ -21,6 +21,9 @@
 ### Connect your agent
 Chamade exposes a hosted **MCP server** (Model Context Protocol) at `https://mcp.chamade.io/mcp/`. Point any Streamable HTTP MCP client — Claude Desktop, Claude Code, Cursor, Windsurf, or any other compliant client — at that URL with your Chamade API key, and your agent immediately gains tools to join Talk DMs, send messages, and participate in voice calls, exactly like a human user. No custom integration code required. Agents that do not speak MCP can use the [Chamade REST API](https://chamade.io/docs) instead.
 
+### Or let Chamade run the agent for you
+Don't want to host a runtime at all? Instead of pointing your own MCP client or REST integration at Chamade, attach an LLM provider in the Chamade dashboard and Chamade drives the bot for you on every message. Supported providers include OpenAI, Anthropic, Google Gemini, AWS Bedrock, Microsoft Foundry, and **Mistral** — a European model that keeps inference in the EU. Paired with your self-hosted Nextcloud and the optional end-to-end encryption above, the whole assistant can run on European infrastructure.
+
 ### One integration, every platform
 Once connected to Chamade, the same agent simultaneously reaches:
 - Microsoft Teams — meetings and direct messages
@@ -42,7 +45,7 @@ Your agent can bridge a Talk conversation to any of these, or simply be reachabl
 4. Hook your agent up to `https://mcp.chamade.io/mcp/` (MCP) or the REST API
 5. Start chatting with your agent in Talk
     ]]></description>
-    <version>3.0.0</version>
+    <version>3.0.1</version>
     <licence>AGPL-3.0-or-later</licence>
     <author mail="contact@skilpa.be" homepage="https://skilpa.be">Skilpa</author>
     <namespace>ChamadeTalk</namespace>
