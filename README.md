@@ -49,7 +49,7 @@ Search for **Chamade AI Bridge for Talk** in your Nextcloud app store and instal
 
 ### Manual
 
-1. Download the [latest release](https://codeberg.org/skilpa/chamade-nctalk/releases)
+1. Download the [latest release](https://github.com/Nafis-Chamade/chamade-nctalk/releases)
 2. Extract to your Nextcloud `apps/` directory as `chamade_talk/`
 3. Enable the app: `occ app:enable chamade_talk`
 

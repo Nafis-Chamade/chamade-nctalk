@@ -53,9 +53,9 @@ Your agent can bridge a Talk conversation to any of these, or simply be reachabl
     <category>integration</category>
     <category>multimedia</category>
     <website>https://chamade.io</website>
-    <bugs>https://codeberg.org/skilpa/chamade-nctalk/issues</bugs>
-    <repository type="git">https://codeberg.org/skilpa/chamade-nctalk.git</repository>
-    <screenshot small-thumbnail="https://codeberg.org/skilpa/chamade-nctalk/raw/branch/main/img/app.png">https://codeberg.org/skilpa/chamade-nctalk/raw/branch/main/img/screenshot.png</screenshot>
+    <bugs>https://github.com/Nafis-Chamade/chamade-nctalk/issues</bugs>
+    <repository type="git">https://github.com/Nafis-Chamade/chamade-nctalk.git</repository>
+    <screenshot small-thumbnail="https://raw.githubusercontent.com/Nafis-Chamade/chamade-nctalk/main/img/app.png">https://raw.githubusercontent.com/Nafis-Chamade/chamade-nctalk/main/img/screenshot.png</screenshot>
     <documentation>
         <admin>https://chamade.io/docs/nctalk</admin>
     </documentation>

@@ -14,7 +14,7 @@
 # Prerequisites:
 #   - maquisard-chamade-dev at /srv/apps/maquisard-chamade-dev
 #   - chamade at /srv/apps/chamade
-#   - SSH key ~/.ssh/chamade_codeberg
+#   - SSH key ~/.ssh/github_nctalk (GitHub deploy key; migré depuis Codeberg 2026-07-04)
 
 set -euo pipefail
 
@@ -167,7 +167,7 @@ DEAD=$(grep -rn "PairController\|BridgeController\|BridgeService\|ProvisionServi
     "$SCRIPT_DIR" --include="*.php" --include="*.xml" | grep -v "publish.sh" | grep -v ".git/" || true)
 [[ -n "$DEAD" ]] && echo "ERROR: Dead code: $DEAD" && ERRORS=$((ERRORS + 1))
 
-PRIVATE=$(grep -rn "codeberg.org/skilpa/maquisard" "$SCRIPT_DIR" \
+PRIVATE=$(grep -rnE "codeberg.org/skilpa/(maquisard|chamade)|github.com/Nafis-Chamade/(maquisard|chamade)([^-]|$)" "$SCRIPT_DIR" \
     --include="*.php" --include="*.xml" --include="*.json" | grep -v "publish.sh" | grep -v ".git/" || true)
 [[ -n "$PRIVATE" ]] && echo "ERROR: Private URLs: $PRIVATE" && ERRORS=$((ERRORS + 1))
 
@@ -202,8 +202,8 @@ Synced from maquisard source.
 Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 EOF
     )"
-    GIT_SSH_COMMAND="ssh -i ~/.ssh/chamade_codeberg -o IdentitiesOnly=yes" git push
-    echo "Pushed to Codeberg ✓"
+    GIT_SSH_COMMAND="ssh -i ~/.ssh/github_nctalk -o IdentitiesOnly=yes" git push
+    echo "Pushed to GitHub ✓"
 fi
 
 # ── Step 9: Build tar.gz for web download ──
@@ -240,13 +240,13 @@ Update NC Talk addon to v${MQSR_VERSION}
 Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 EOF
     )"
-    GIT_SSH_COMMAND="ssh -i ~/.ssh/chamade_codeberg -o IdentitiesOnly=yes" git push
+    GIT_SSH_COMMAND="ssh -i ~/.ssh/github_nctalk -o IdentitiesOnly=yes" git push
     echo "Chamade repo updated ✓"
 fi
 
 echo ""
 echo "=== Done: chamade_talk v${MQSR_VERSION} ==="
-echo "  Codeberg: https://codeberg.org/skilpa/chamade-nctalk"
+echo "  GitHub: https://github.com/Nafis-Chamade/chamade-nctalk"
 echo "  Download: /static/$TARBALL"
 echo ""
 echo "To deploy prod:"
